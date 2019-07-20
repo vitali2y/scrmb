@@ -1,0 +1,61 @@
+$title ('TDS 1.0 @DEB, IDLE2.PLM')
+$code debug calls (small) registerbank (0)
+
+/*[]*****************************************************[]*/
+/*[]                                                     []*/
+/*[]              Time-division  scrambler               []*/
+/*[]                    Version  1.0                     []*/
+/*[]            (c)  Ermolenko  Vitaly,  1993            []*/
+/*[]                                                     []*/
+/*[]                IDLE2.PLM: idle module 2             []*/
+/*[]                                                     []*/
+/*[]*****************************************************[]*/
+IDLE2: do;
+declare
+  equ        literally 'literally',
+  proc       equ       'procedure',
+  dcl        equ       'declare';
+
+/*[]*****************************************************[]*/
+/*[]           IdleSubr5:  5  idle  subroutine           []*/
+/*[]*****************************************************[]*/
+IdleSubr5: proc public;
+ dcl
+    biTmpBit       bit at (0B2h) register,
+    bK             byte,
+    bI             byte idata,
+    (aPtr1, aPtr2) address,
+    bByte1         based aPtr1 byte auxiliary,
+    bByte2         based aPtr2 byte auxiliary;
+
+ bI    = 0;
+ aPtr1 = 0C000h;  aPtr2 = 0C000h + 255;
+ do bK = 0 to 254;
+  if (biTmpBit = 1)
+   then do;
+    if (bI = 0)
+     then do;
+      aPtr1 = aPtr1 + 1;
+      goto Next1;
+     end;
+    bByte2 = (bByte2 + 1) or  80h;
+
+Next1:
+    bI     = 1;
+   end;
+   else do;
+    if (bI = 1)
+     then do;
+      aPtr2 = aPtr2 + 1;
+      goto Next2;
+     end;
+    bByte1 = (bByte1 + 1) and 7Fh;
+
+Next2:
+    bI     = 0;
+   end;
+  call time (250);
+ end;
+end IdleSubr5;
+
+end IDLE2;

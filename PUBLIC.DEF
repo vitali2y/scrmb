@@ -1,0 +1,182 @@
+;[]*****************************************************[]
+;[]							[]
+;[]	          Time-division  scrambler		[]
+;[]	 	        Version  1.0			[]
+;[]	        (c)  Ermolenko  Vitaly,  1993		[]
+;[]							[]
+;[]        PUBLIC.DEF: module of public constants       []
+;[]                     and definitions	                []
+;[]							[]
+;[]*****************************************************[]
+
+;[]*****************************************************[]
+;[]                  General  information               []
+;[]*****************************************************[]
+%*define        (DATE)  ('12 Aug 93')                   ; current date    (9 bytes)
+%*define        (VERS)  ('1.0')                         ; current version (3 bytes)
+
+;[]*****************************************************[]
+;[]                     Global  regimes                 []
+;[]*****************************************************[]
+
+;┌───────── Macro MAKE: regime of compilation ──────────┐
+;│  DEB - real-time run of scrambler with debug signals;│
+;│  EMU - real-time run in hardware emulator;           │
+;│  RUN - real-time run of scrambler;                   │
+;│  SIM - simulate run                                  │
+;└──────────────────────────────────────────────────────┘
+%*define	(MAKE)	(DEB)                           ; macro: regime of compilation
+%if (%nes (%MAKE,SIM) and %nes (%MAKE,DEB) and %nes (%MAKE,RUN) and %nes (%MAKE,EMU))
+then (
+		%out	(Error: invalid compilation regime!)
+                end
+     ) fi
+
+;┌────────── Macro STRT: regime of hand start ──────────┐
+;│  HANDBOTH  - hand start together from one key.       │
+;│                      ATTENTION!                      │
+;│     In this regime if it's slave, then set byte with │
+;│ setting low bit on address WhoAmI, if master - clear │
+;│ this bit. Without fail!                              │
+;│  HANDSEPAR - hand start separately from its keys.    │
+;└──────────────────────────────────────────────────────┘
+%*define	(STRT)  (HANDBOTH)                      ; macro: hand start separately or together
+
+;┌──────────── Macro ANTI: false generating ────────────┐
+;│  GNRT   - generating of random values to link on III │
+;│ cycle (for master only!);                            │
+;│  NOGNRT - no generating.                             │
+;└──────────────────────────────────────────────────────┘
+%*define        (ANTI)  (NOGNRT)                        ; macro: generate or no false values
+
+;[]*****************************************************[]
+;[]	             Public  used  bits			[]
+;[]*****************************************************[]
+biDam		bit	p1.0				; select DAM
+biPhonAdc	bit	p1.1				; select phone ADC
+biLinkAdc	bit	p1.2				; select link  ADC
+biSelDrv	bit	p1.7				; chips select (DAC link or DAC phone)
+biRegSync       bit     p3.0                            ; regime of synchronization for DEB real-time run (input)
+biPhonAdcRdy	bit	p1.3				; ready of phone ADC
+biLinkAdcRdy	bit	p3.3				; ready of link  ADC
+biWaitButton	bit	p3.5				; manager-button (input)
+%if (%eqs (%MAKE,DEB) or %eqs (%MAKE,EMU))
+then (
+biCtrl1		bit	p3.1				; control pin (output)
+biCtrl2		bit	p3.4				; control pin (output)
+     ) fi
+
+;[]*****************************************************[]
+;[]                    Public  macros                   []
+;[]*****************************************************[]
+%if (%eqs (%MAKE,SIM))
+then (
+%*define	(bSIZEBLOCK)	(3)                  	; size of each work arrays
+     )
+else (
+%*define	(bSIZEBLOCK)	(255)	          	; size of each work arrays
+     ) fi
+%if ((%bSIZEBLOCK mod 3) ne 0)
+then (
+		%out	(Warning: bSIZEBLOCK must divide on 3 without remainder!)
+		end
+     ) fi
+%if (%bSIZEBLOCK gt 100h)
+then (
+      		%out	(Warning: bSIZEBLOCK don't may greater 255 byte!)
+		end
+     ) fi
+%*define	(bDGTZCYCLE)	(100)			; digitization cycle, in mcs
+%if (%bDGTZCYCLE lt 90)
+then (
+		%out	(Warning: bDGTZCYCLE don't may less 90 mcs!)
+		end
+     ) fi
+%*define        (IAmMaster)				%' set flag of master
+(
+                clr	biWho
+)
+%*define        (IAmSlave)				%' set flag of slave
+(
+                setb	biWho
+)
+%*define	(OutByt	(To))				%' macro: send byte to link or phone
+(
+%if (%eqs (%To,ToLink))
+then (
+		setb	biSelDrv			; commute link DAC
+     )
+else (
+%if (%eqs (%To,ToPhone))
+then (
+		clr	biSelDrv			; commute phone DAC
+     )
+else (
+		%out (Macro OutByt: invalid argument!)
+		end
+     ) fi
+     ) fi
+		mov	dph, #high (wADCDACSEG)
+		movx	@dptr, a			; transmission byte to link or phone
+)
+%*define        (RunPhonADC)                            %' run phone ADC for transforming of signal
+(
+		clr	biPhonAdc
+)
+%*define        (StopPhonADC)                           %' stop phone ADC
+(
+ 		setb	biPhonAdc
+)
+%*define        (RunLinkADC)                            %' run link ADC for transforming of signal
+(
+		clr	biLinkAdc
+)
+%*define        (StopLinkADC)                           %' stop link ADC
+(
+ 		setb	biLinkAdc
+)
+
+;[]*****************************************************[]
+;[]                   Public  constants                 []
+;[]*****************************************************[]
+%if (%eqs (%MAKE,SIM) or %eqs (%MAKE,EMU))
+then (
+wCODESEG	equ	0000h				; code segment
+     )
+else (
+wCODESEG	equ	8000h				; code segment
+     ) fi
+%if (%eqs (%MAKE,EMU))
+then (
+wADCDACSEG	equ	2000h				; segment ADC/DAC
+wDATA1SEG	equ	4000h				; first data segment
+     )
+else (
+wADCDACSEG	equ	0A000h				; segment ADC/DAC
+wDATA1SEG	equ	0C000h				; first data segment
+     ) fi
+bNULLPOT	equ	7Fh				; null potential in link
+bSIZESTACK	equ	20h				; size of stack
+bSIZESINE	equ	10				; size of sine table
+bSYNCHCYCLES	equ	3				; count of cycles for acknowledgement availability of synchros
+bRSTCOUNTS	equ	3				; count of reset bytes near overlay counts
+bAVERAGESIZE    equ     20                              ; count of mean values from link
+bFALSEZONE      equ     (%bSIZEBLOCK * 2) / 3           ; false zone for generating of random values
+wMINSYNCHCYCLE	equ	(%bDGTZCYCLE * bSIZESINE) - 100	; min. limit cycle of synchro sine
+wMAXSYNCHCYCLE	equ	(%bDGTZCYCLE * bSIZESINE) + 100	; max. limit cycle of synchro sine
+bDURATIONSYNC   equ	80				; duration of sending synchro signals (*10-1 ms)
+bDURATIONWAIT	equ	(bDURATIONSYNC / 10) * 10	; duration of polling synchro signals (ms)
+wDURATIONSOUND	equ	333				; duration of squeak
+bCYCLE_I	equ	1				; cycle I (first for slave task)
+bCYCLE_II	equ	(bCYCLE_I   + 1)		; cycle II (first for master task)
+bCYCLE_III	equ	(bCYCLE_II  + 1)		; cycle generating of synchro signals
+bPHASE_I        equ     0                               ; first phase for i/o of phone
+bPHASE_II       equ     (bPHASE_I  + 1)                 ; second phase for i/o of phone
+bPHASE_III      equ     (bPHASE_II + 1)                 ; third phase for i/o of phone
+
+;[]++++++++++++++++++ Count of squeaks ++++++++ Begin +[]
+bWRNPOWERON	equ	1				; warning: switch on power
+bWRNSYNCABSNC	equ	5				; error: scramblers don't synchronize
+;[]+++++++++++++++++++++++++++++++++++++++++++++ End ++[]
+
+; End of file PUBLIC.DEF

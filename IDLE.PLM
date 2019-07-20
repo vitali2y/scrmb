@@ -1,0 +1,78 @@
+$title ('TDS 1.0 @DEB, IDLE.PLM')
+$code debug calls (small) registerbank (0)
+
+/*[]*****************************************************[]*/
+/*[]                                                     []*/
+/*[]              Time-division  scrambler               []*/
+/*[]                    Version  1.0                     []*/
+/*[]            (c)  Ermolenko  Vitaly,  1993            []*/
+/*[]                                                     []*/
+/*[]                IDLE.PLM: idle module                []*/
+/*[]                                                     []*/
+/*[]*****************************************************[]*/
+IDLE: do;
+declare
+  equ        literally 'literally',
+  proc       equ 'procedure',
+  dcl        equ 'declare',
+  struc      equ 'structure';
+
+/*[]*****************************************************[]*/
+/*[]         IdleSubr1:  first  idle  subroutine         []*/
+/*[]*****************************************************[]*/
+IdleSubr1: proc public;
+ dcl
+    (bI, bK)       byte,
+    bJ             byte idata,
+    (aPtr1, aPtr2) address,
+    bByte1         based aPtr1 byte auxiliary,
+    bByte2         based aPtr2 byte auxiliary,
+    sArr1          struc
+      (
+       part1 (256) byte,
+       part2 (256) byte
+      ) auxiliary,
+     sArr2 (*) byte constant ('0!1@2#3$4%5^6&7*8(9)A_B+C"D{E}F');
+
+ bJ, bK = 0;
+ aPtr1  = .sArr1.part1;  aPtr2 = .sArr1.part2;
+ do bI = 0 to 254;
+  if (bK = 0)
+   then bByte1 = bByte2 * sArr2 (bJ) / 7Fh;
+   else bByte1 = bByte2 * sArr2 (bJ) / 7Fh;
+  if (bByte1 > 07Fh)
+   then do;
+    bByte2 = shr (bByte1, 1) or 80h;
+    bJ = bJ + 2;
+    if (bJ = length (sArr2))
+     then do;
+       bK = not bK;  bJ = 0;
+     end;
+   end;
+  else do;
+    bByte2 = shr (bByte1, 1);
+    bJ = bJ - 2;
+    if (bJ = 0)
+     then do;
+       bK = not bK;  bJ = 0;
+     end;
+  end;
+   aPtr1 = aPtr1 + 1;
+   aPtr2 = aPtr2 + 1;
+ end;
+end IdleSubr1;
+
+/*[]*****************************************************[]*/
+/*[]        IdleSubr2:  second  idle  subroutine         []*/
+/*[]*****************************************************[]*/
+IdleSubr2: proc (bPar) public;
+  dcl bPar byte;
+
+  bPar = bPar * 20;
+  do while (bPar <> 1);
+    call time (250);
+    bPar = bPar - 1;
+  end;
+end IdleSubr2;
+
+end IDLE;

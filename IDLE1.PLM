@@ -1,0 +1,60 @@
+$title ('TDS 1.0 @DEB, IDLE1.PLM')
+$code debug calls (small) registerbank (0)
+
+/*[]*****************************************************[]*/
+/*[]                                                     []*/
+/*[]              Time-division  scrambler               []*/
+/*[]                    Version  1.0                     []*/
+/*[]            (c)  Ermolenko  Vitaly,  1993            []*/
+/*[]                                                     []*/
+/*[]               IDLE1.PLM: idle module 1              []*/
+/*[]                                                     []*/
+/*[]*****************************************************[]*/
+IDLE1: do;
+declare
+  equ        literally 'literally',
+  proc       equ 'procedure',
+  dcl        equ 'declare',
+  struc      equ 'structure';
+
+fndbd0: proc (aPtr1, Find, Count, Var) external;
+ dcl aPtr1 address, (Find, Count, Var) byte;
+end fndbd0;
+
+/*[]*****************************************************[]*/
+/*[]         IdleSubr3:  first  idle  subroutine         []*/
+/*[]*****************************************************[]*/
+IdleSubr3: proc public;
+ dcl
+    (bI, bJ)       byte idata,
+    (aPtr1, aPtr2) address idata,
+    bByte1         based aPtr1 byte auxiliary,
+    bByte2         based aPtr2 byte auxiliary;
+
+ bI    = 0;
+ aPtr1 = 0C000h;
+ aPtr2 = 0C000h + 255;
+ do while bI <> 255;
+  bJ = bByte1;  bByte1 = bByte2;  bByte2 = bJ;
+  aPtr1  = aPtr1 + 1;
+  aPtr2  = aPtr2 + 1;
+  bI     = bI + 1;
+ end;
+end IdleSubr3;
+
+/*[]*****************************************************[]*/
+/*[]        IdleSubr4:  second  idle  subroutine         []*/
+/*[]*****************************************************[]*/
+IdleSubr4: proc public;
+ dcl
+    bI    byte,
+    aPtr1 address idata;
+
+ aPtr1 = 0C000h;
+ call fndbd0 (aPtr1, 07Fh, 255, bI);
+ if (bI = 0) then return;
+ aPtr1 = 0C000h + 255;
+ call fndbd0 (aPtr1, 07Fh, 255, bI);
+end IdleSubr4;
+
+end IDLE1;
